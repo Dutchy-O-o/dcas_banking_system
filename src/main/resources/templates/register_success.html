@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body style="text-align: center;">
+<h2 style="color:green;">Kayıt Başarılı!</h2>
+<p>Lütfen aşağıdaki QR kodu <b>Google Authenticator</b> uygulamanıza okutun.</p>
+<img th:src="${qrUrl}" alt="QR Kod"><br><br>
+<p>Gizli Anahtar: <span th:text="${secret}"></span></p>
+<a href="/login">Giriş Yap</a>
+</body>
+</html>

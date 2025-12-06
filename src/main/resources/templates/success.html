@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>İşlem Başarılı</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container success-container">
+    <div class="icon-circle success-icon">
+        ✓
+    </div>
+    <h2>İşlem Başarıyla Gerçekleşti!</h2>
+    <p>Kimlik doğrulama süreci başarıyla tamamlandı ve işleminiz onaylandı.</p>
+
+    <div class="action-buttons">
+        <a href="/transfer" class="btn btn-primary">Yeni İşlem Yap</a>
+        <form th:action="@{/logout}" method="post" style="display:inline;">
+            <button type="submit" class="btn btn-secondary">Çıkış Yap</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

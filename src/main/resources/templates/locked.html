@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Hesap Kilitlendi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container locked-container">
+    <div class="icon-circle locked-icon">
+        🔒
+    </div>
+    <h2 class="text-danger">Hesabınız Geçici Olarak Kilitlendi!</h2>
+    <p>Güvenliğiniz için, çok sayıda hatalı giriş denemesi nedeniyle hesabınıza erişim durdurulmuştur.</p>
+
+    <div class="alert-box error">
+        <strong>Neden?</strong> DCAS doğrulama adımında 3 kez hatalı giriş tespit edildi.
+        Bu durum, kaba kuvvet (brute-force) saldırılarına karşı bir önlemdir.
+    </div>
+
+    <p>Lütfen daha sonra tekrar deneyiniz veya müşteri hizmetleri ile iletişime geçiniz.</p>
+
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="btn btn-primary">Güvenli Çıkış</button>
+    </form>
+</div>
+</body>
+</html>

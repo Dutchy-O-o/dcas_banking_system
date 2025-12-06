@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Para Transferi</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container">
+    <h2>Para Transferi</h2>
+    <p>Bu işlem yüksek güvenlik gerektirir. DCAS doğrulaması başlatılacaktır.</p>
+
+    <form th:action="@{/init-transfer}" method="post">
+        <button type="submit" class="btn btn-primary">Transferi Başlat</button>
+    </form>
+
+    <br>
+    <a href="/home" class="link-secondary">Ana Sayfaya Dön</a>
+</div>
+</body>
+</html>

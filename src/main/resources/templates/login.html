@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Giriş</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="text-align: center; padding: 50px;">
+<div class="container">
+    <h2>Giriş Yap</h2>
+
+    <div th:if="${param.error}" class="alert-box error">
+        Kullanıcı adı veya şifre hatalı!
+    </div>
+
+    <form th:action="@{/login}" method="post">
+        <input type="text" name="username" placeholder="Kullanıcı Adı" required><br>
+        <input type="password" name="password" placeholder="Parola" required><br>
+        <button type="submit" class="btn btn-primary">Giriş</button>
+    </form>
+
+    <br>
+    <a href="/register" class="link-secondary">Kayıt Ol</a>
+</div>
+</body>
+</html>

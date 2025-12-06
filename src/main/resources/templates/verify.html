@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>DCAS Doğrulama</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="text-align: center; padding: 50px;">
+<div class="container">
+    <h2 style="color: #007bff;">🛡️ Dinamik Güvenlik Kontrolü</h2>
+    <p>Lütfen aşağıdaki talimatı uygulayın:</p>
+
+    <div class="alert-box warning" style="font-weight: bold; font-size: 1.2em;">
+        <span th:text="${instruction}"></span>
+    </div>
+
+    <form th:action="@{/verify-transfer}" method="post">
+        <input type="text" name="userResponse" placeholder="Birleşik Kodu Girin" required style="text-align: center; letter-spacing: 2px;">
+        <br>
+        <button type="submit" class="btn btn-primary">Doğrula</button>
+    </form>
+</div>
+</body>
+</html>

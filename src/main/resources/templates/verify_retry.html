@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Hatalı Giriş</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container warning-container">
+    <div class="icon-circle warning-icon">!</div>
+    <h2 class="text-warning">Doğrulama Başarısız</h2>
+
+    <div class="alert-box warning">
+        <span th:text="${error}">Hatalı giriş yaptınız.</span>
+    </div>
+
+    <p>Lütfen kodlarınızı kontrol edip tekrar deneyiniz.</p>
+
+    <form th:action="@{/init-transfer}" method="post">
+        <button type="submit" class="btn btn-primary">Tekrar Dene</button>
+    </form>
+
+    <br>
+    <form th:action="@{/logout}" method="post" style="display:inline;">
+        <button type="submit" class="link-secondary" style="background:none; border:none; cursor:pointer;">Çıkış Yap</button>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Ana Sayfa - DCAS Bank</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .dashboard-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007bff;
+            text-align: left;
+        }
+        .balance-title { color: #666; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px; }
+        .balance-amount { font-size: 2.5em; color: #333; font-weight: bold; margin: 10px 0; }
+        .action-grid { display: flex; gap: 15px; margin-top: 20px; }
+        .transaction-list { list-style: none; padding: 0; text-align: left; }
+        .transaction-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tx-date { font-size: 0.8em; color: #999; display: block; }
+        .tx-desc { font-weight: 500; color: #333; }
+        .tx-amount.minus { color: #dc3545; }
+        .tx-amount.plus { color: #28a745; }
+    </style>
+</head>
+<body>
+<div class="container" style="max-width: 600px;"> <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h2 style="margin: 0;">Merhaba, <span th:text="${username}" style="color:#007bff;">Kullanıcı</span> 👋</h2>
+    <form th:action="@{/logout}" method="post" style="margin: 0;">
+        <button type="submit" class="link-secondary" style="background:none; border:none; cursor:pointer;">Çıkış Yap</button>
+    </form>
+</div>
+
+    <div class="dashboard-card">
+        <div class="balance-title">Toplam Bakiye</div>
+        <div class="balance-amount">₺ <span th:text="${balance}">0.00</span></div>
+        <div style="font-size: 0.9em; color: #28a745;">▲ Bu ay %12 gelir artışı</div>
+    </div>
+
+    <div class="action-grid">
+        <a href="/transfer" class="btn btn-primary" style="flex: 1;">💸 Para Gönder</a>
+        <button class="btn btn-secondary" style="flex: 1; background-color: #6c757d;" disabled>Fatura Öde</button>
+    </div>
+
+    <br><hr><br>
+
+    <h3 style="text-align: left; color: #444;">Son Hesap Hareketleri</h3>
+    <ul class="transaction-list">
+        <li class="transaction-item">
+            <div>
+                <span class="tx-desc">Netflix Abonelik</span>
+                <span class="tx-date">Bugün, 14:30</span>
+            </div>
+            <span class="tx-amount minus">- 149,99 TL</span>
+        </li>
+        <li class="transaction-item">
+            <div>
+                <span class="tx-desc">Ahmet Yılmaz (Gelen Transfer)</span>
+                <span class="tx-date">Dün, 09:15</span>
+            </div>
+            <span class="tx-amount plus">+ 2.500,00 TL</span>
+        </li>
+        <li class="transaction-item">
+            <div>
+                <span class="tx-desc">Market Alışverişi</span>
+                <span class="tx-date">02 Ara, 18:45</span>
+            </div>
+            <span class="tx-amount minus">- 854,50 TL</span>
+        </li>
+    </ul>
+
+</div>
+</body>
+</html>
