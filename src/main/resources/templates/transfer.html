@@ -1,20 +1,47 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Para Transferi</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Transfer | DCAS Bank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
-<div class="container">
-    <h2>Para Transferi</h2>
-    <p>Bu işlem yüksek güvenlik gerektirir. DCAS doğrulaması başlatılacaktır.</p>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-white py-3">
+                    <h4 class="mb-0 text-primary">Money Transfer</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
 
-    <form th:action="@{/init-transfer}" method="post">
-        <button type="submit" class="btn btn-primary">Transferi Başlat</button>
-    </form>
+                    <div class="alert alert-info d-flex align-items-center">
+                        <span class="me-2">ℹ️</span>
+                        <div>
+                            Current Balance: <strong>$<span th:text="${balance}"></span></strong>
+                        </div>
+                    </div>
 
-    <br>
-    <a href="/home" class="link-secondary">Ana Sayfaya Dön</a>
+                    <form th:action="@{/init-transfer}" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Receiver Username</label>
+                            <input type="text" name="receiver" class="form-control" placeholder="Who are you sending to?" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Amount ($)</label>
+                            <input type="number" name="amount" class="form-control" step="0.01" min="1" placeholder="0.00" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Continue to Security Check</button>
+                        </div>
+                    </form>
+                    <div class="text-center mt-3">
+                        <a href="/dashboard" class="text-decoration-none text-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 </body>
 </html>

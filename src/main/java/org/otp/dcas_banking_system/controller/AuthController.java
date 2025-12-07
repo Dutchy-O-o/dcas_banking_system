@@ -2,13 +2,15 @@ package org.otp.dcas_banking_system.controller;
 
 import org.otp.dcas_banking_system.model.User;
 import org.otp.dcas_banking_system.repository.UserRepository;
-import org.otp.dcas_banking_system.service.DcasService;
-import org.otp.dcas_banking_system.service.EncryptionService;
+import org.otp.dcas_banking_system.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Random;
 
 @Controller
 public class AuthController {
@@ -17,6 +19,7 @@ public class AuthController {
     @Autowired private EncryptionService encryptionService;
     @Autowired private DcasService dcasService;
     @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private EmailService emailService;
 
     @GetMapping("/login")
     public String showLogin() { return "login"; }
@@ -26,32 +29,39 @@ public class AuthController {
 
     @PostMapping("/register")
     public String registerUser(@RequestParam String username,
+                               @RequestParam String email,
                                @RequestParam String password,
-                               @RequestParam String tsw, // Transaction Security Word
+                               @RequestParam String tsw,
+                               @RequestParam String apw, // Anti-Phishing Word
                                Model model) {
 
-        if (userRepository.findByUsername(username).isPresent()) {
-            model.addAttribute("error", "Bu kullanıcı adı zaten alınmış.");
+        if (userRepository.existsByUsername(username)) {
+            model.addAttribute("error", "Username already exists.");
             return "register";
         }
 
         User user = new User();
         user.setUsername(username);
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
 
-        // TSW'yi şifrele
-        user.setTswEncrypted(encryptionService.encrypt(tsw));
+        // Generate Fake Account Number
+        user.setAccountNumber("TR" + (new Random().nextLong(9000000000L) + 1000000000L));
 
-        // TOTP Secret üret ve şifrele
+        // Encrypt secrets
+        user.setTswEncrypted(encryptionService.encrypt(tsw));
+        user.setApwEncrypted(encryptionService.encrypt(apw));
+
         String secret = dcasService.generateSecretKey();
         user.setTotpSecretEncrypted(encryptionService.encrypt(secret));
 
         userRepository.save(user);
 
-// DÜZELTİLEN KISIM: URLEncoder kullanarak güvenli URL oluşturma
-        String otpAuthUrl = "otpauth://totp/DCAS_Bank:" + username + "?secret=" + secret + "&issuer=DCAS_Bank";
-// Google Charts API'sine gönderirken URL'yi encode etmemiz gerekmez, ancak parametreleri düzgün ekleyelim.
-        String qrUrl = "https://chart.googleapis.com/chart?chs=200x200&chld=M|0&cht=qr&chl=" + otpAuthUrl;
+        // QR Fix
+        String encodedIssuer = URLEncoder.encode("DCAS Bank", StandardCharsets.UTF_8);
+        String encodedUser = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        String otpAuthUrl = "otpauth://totp/" + encodedIssuer + ":" + encodedUser + "?secret=" + secret + "&issuer=" + encodedIssuer;
+        String qrUrl = "https://chart.googleapis.com/chart?chs=200x200&chld=M|0&cht=qr&chl=" + URLEncoder.encode(otpAuthUrl, StandardCharsets.UTF_8);
 
         model.addAttribute("qrUrl", qrUrl);
         model.addAttribute("secret", secret);

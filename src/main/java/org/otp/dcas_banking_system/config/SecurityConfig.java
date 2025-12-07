@@ -15,22 +15,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // HTTPS zorunluluğu (Prod ortamı için)
+                .requiresChannel(channel -> channel.anyRequest().requiresSecure())
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**").permitAll() // Bu sayfalar herkese açık
-                        .anyRequest().authenticated() // Diğer sayfalar için giriş şart
+                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .formLogin((form) -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/home", true) // DEĞİŞTİ: Artık /home'a gidiyor
+                        .defaultSuccessUrl("/dashboard", true)
                         .permitAll()
                 )
-                .logout((logout) -> logout.permitAll());
+                .logout((logout) -> logout.logoutSuccessUrl("/login?logout").permitAll());
 
         return http.build();
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Parola güvenliği için standart
-    }
+    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 }
