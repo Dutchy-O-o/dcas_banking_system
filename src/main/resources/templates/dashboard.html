@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard | DCAS Bank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar { height: 100vh; background: #1e3c72; color: white; position: fixed; width: 250px; padding: 20px; }
+        .sidebar a { color: rgba(255,255,255,0.8); text-decoration: none; display: block; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        .sidebar a:hover { background: rgba(255,255,255,0.1); color: white; }
+        .content { margin-left: 250px; padding: 30px; }
+        .balance-card { background: linear-gradient(45deg, #11998e, #38ef7d); color: white; border-radius: 15px; padding: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h4 class="mb-4"><i class="fas fa-university me-2"></i>DCAS Bank</h4>
+    <a href="/dashboard"><i class="fas fa-home me-2"></i>Dashboard</a>
+    <a href="/transfer"><i class="fas fa-exchange-alt me-2"></i>Transfer Money</a>
+    <a href="#"><i class="fas fa-credit-card me-2"></i>Cards (Demo)</a>
+    <a href="#"><i class="fas fa-cog me-2"></i>Settings</a>
+    <form th:action="@{/logout}" method="post" class="mt-5">
+        <button class="btn btn-outline-light w-100">Logout</button>
+    </form>
+</div>
+
+<div class="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Welcome back, <span th:text="${user.username}">User</span></h2>
+        <div class="text-muted">Account: <span th:text="${user.accountNumber}"></span></div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="balance-card shadow">
+                <h5>Total Balance</h5>
+                <h1 class="fw-bold">$ <span th:text="${user.balance}">0.00</span></h1>
+                <small>Available for transfer</small>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4 shadow-sm h-100 border-0">
+                <h5>Quick Actions</h5>
+                <div class="d-flex gap-2 mt-3">
+                    <a href="/transfer" class="btn btn-primary flex-fill"><i class="fas fa-paper-plane me-2"></i>Send Money</a>
+                    <button class="btn btn-outline-secondary flex-fill" disabled><i class="fas fa-file-invoice me-2"></i>Pay Bills</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mb-3">Recent Transactions</h4>
+    <div class="card shadow-sm border-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Counterparty</th>
+                <th>Amount</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="tx : ${transactions}">
+                <td th:text="${#temporals.format(tx.timestamp, 'dd-MM-yyyy HH:mm')}">Date</td>
+                <td th:text="${tx.description}">Desc</td>
+                <td>
+                    <span th:if="${tx.senderUsername == user.username}" th:text="${tx.receiverUsername}">Receiver</span>
+                    <span th:if="${tx.receiverUsername == user.username}" th:text="${tx.senderUsername}">Sender</span>
+                </td>
+                <td th:class="${tx.senderUsername == user.username} ? 'text-danger fw-bold' : 'text-success fw-bold'">
+                    <span th:if="${tx.senderUsername == user.username}">- </span>
+                    <span th:if="${tx.receiverUsername == user.username}">+ </span>
+                    $<span th:text="${tx.amount}">0.00</span>
+                </td>
+                <td><span class="badge bg-success" th:text="${tx.status}">Success</span></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(transactions)}">
+                <td colspan="5" class="text-center text-muted py-3">No transactions yet.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>

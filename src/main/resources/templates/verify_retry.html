@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>Hatalı Giriş</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Verification Failed | DCAS Bank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body>
-<div class="container warning-container">
-    <div class="icon-circle warning-icon">!</div>
-    <h2 class="text-warning">Doğrulama Başarısız</h2>
+<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+<div class="card shadow border-0 text-center p-5" style="max-width: 500px;">
+    <div class="mb-4 text-warning">
+        <i class="fas fa-times-circle fa-5x"></i>
+    </div>
+    <h3 class="fw-bold text-dark">Verification Failed</h3>
 
-    <div class="alert-box warning">
-        <span th:text="${error}">Hatalı giriş yaptınız.</span>
+    <div class="alert alert-warning mt-3">
+        <strong th:text="${error}">Incorrect Input!</strong>
     </div>
 
-    <p>Lütfen kodlarınızı kontrol edip tekrar deneyiniz.</p>
+    <p class="text-muted">
+        The combined code you entered does not match our records. Please check your <strong>TSW</strong> and current <strong>TOTP</strong> code.
+    </p>
 
-    <form th:action="@{/init-transfer}" method="post">
-        <button type="submit" class="btn btn-primary">Tekrar Dene</button>
-    </form>
-
-    <br>
-    <form th:action="@{/logout}" method="post" style="display:inline;">
-        <button type="submit" class="link-secondary" style="background:none; border:none; cursor:pointer;">Çıkış Yap</button>
-    </form>
+    <div class="d-grid gap-2 mt-4">
+        <a href="/transfer" class="btn btn-warning text-white fw-bold btn-lg">Try Again</a>
+        <a href="/dashboard" class="btn btn-link text-decoration-none text-muted">Cancel Transaction</a>
+    </div>
 </div>
 </body>
 </html>
