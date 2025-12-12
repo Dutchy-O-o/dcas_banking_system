@@ -13,40 +13,59 @@ public class DcasService {
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
     private final Random random = new Random();
 
-    public static class DcasChallenge {
+    // Session'da saklanacak KURAL (Cevap değil!)
+    public static class ChallengeRule {
         public String instruction;
-        public String expectedResponse;
+        public int tswLen;
+        public boolean tswStart;
+        public int totpLen;
+        public boolean totpStart;
+        public boolean tswFirst;
     }
 
-    public DcasChallenge generateChallenge(User user) {
+    public ChallengeRule generateChallengeRule(User user) {
+        ChallengeRule rule = new ChallengeRule();
+
+        rule.tswLen = random.nextInt(3) + 2; // 2, 3 veya 4
+        rule.totpLen = 6 - rule.tswLen;
+
+        rule.tswStart = random.nextBoolean();
+        rule.totpStart = random.nextBoolean();
+        rule.tswFirst = random.nextBoolean();
+
+        String tswText = rule.tswStart ? "FIRST " + rule.tswLen + " chars of TSW" : "LAST " + rule.tswLen + " chars of TSW";
+        String totpText = rule.totpStart ? "FIRST " + rule.totpLen + " digits of TOTP" : "LAST " + rule.totpLen + " digits of TOTP";
+
+        if (rule.tswFirst) {
+            rule.instruction = tswText + " AND THEN " + totpText;
+        } else {
+            rule.instruction = totpText + " AND THEN " + tswText;
+        }
+        return rule;
+    }
+
+    // Doğrulama: Şu an, 30sn öncesi ve 30sn sonrası kontrol edilir
+    public boolean verifyChallenge(User user, ChallengeRule rule, String userResponse) {
+        if (rule == null || userResponse == null) return false;
+
         String tsw = encryptionService.decrypt(user.getTswEncrypted());
         String totpSecret = encryptionService.decrypt(user.getTotpSecretEncrypted());
 
-        int code = gAuth.getTotpPassword(totpSecret);
-        String totp = String.format("%06d", code);
+        String tswPart = rule.tswStart ? tsw.substring(0, rule.tswLen) : tsw.substring(tsw.length() - rule.tswLen);
 
-        int tswLen = random.nextInt(3) + 2;
-        int totpLen = 6 - tswLen;
+        long currentTime = System.currentTimeMillis() / 30000;
+        long[] windows = { currentTime, currentTime - 1, currentTime + 1 };
 
-        boolean tswStart = random.nextBoolean();
-        boolean totpStart = random.nextBoolean();
-        boolean tswFirst = random.nextBoolean();
+        for (long timeWindow : windows) {
+            int code = gAuth.getTotpPassword(totpSecret, timeWindow * 30000);
+            String totp = String.format("%06d", code);
 
-        String tswPart = tswStart ? tsw.substring(0, tswLen) : tsw.substring(tsw.length() - tswLen);
-        String totpPart = totpStart ? totp.substring(0, totpLen) : totp.substring(6 - totpLen);
+            String totpPart = rule.totpStart ? totp.substring(0, rule.totpLen) : totp.substring(6 - rule.totpLen);
+            String expected = rule.tswFirst ? tswPart + totpPart : totpPart + tswPart;
 
-        String tswText = tswStart ? "FIRST " + tswLen + " chars of TSW" : "LAST " + tswLen + " chars of TSW";
-        String totpText = totpStart ? "FIRST " + totpLen + " digits of TOTP" : "LAST " + totpLen + " digits of TOTP";
-
-        DcasChallenge challenge = new DcasChallenge();
-        if (tswFirst) {
-            challenge.instruction = tswText + " AND THEN " + totpText;
-            challenge.expectedResponse = tswPart + totpPart;
-        } else {
-            challenge.instruction = totpText + " AND THEN " + tswText;
-            challenge.expectedResponse = totpPart + tswPart;
+            if (expected.equals(userResponse)) return true;
         }
-        return challenge;
+        return false;
     }
 
     public String generateSecretKey() { return gAuth.createCredentials().getKey(); }

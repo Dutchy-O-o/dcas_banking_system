@@ -15,28 +15,30 @@
 
     <form th:action="@{/register}" method="post">
         <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input type="text" name="username" class="form-control" required>
+            <label class="form-label">Full Name</label>
+            <input type="text" name="fullName" class="form-control" placeholder="e.g. John Doe" required>
         </div>
+
         <div class="mb-3">
-            <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control" required>
+            <label class="form-label">Email Address</label>
+            <input type="email" name="email" class="form-control" placeholder="name@example.com" required>
         </div>
+
         <div class="mb-3">
             <label class="form-label">Password</label>
             <input type="password" name="password" class="form-control" required>
         </div>
+
         <hr>
         <h5 class="text-secondary">Security Setup</h5>
         <div class="mb-3">
             <label class="form-label">Transaction Security Word (TSW)</label>
             <input type="text" name="tsw" class="form-control" placeholder="Memorize this word (min 6 chars)" minlength="6" required>
-            <small class="text-muted">Used for dynamic challenges during transfers.</small>
         </div>
         <div class="mb-3">
             <label class="form-label">Anti-Phishing Word (APW)</label>
             <input type="text" name="apw" class="form-control" placeholder="e.g. MySecretPet" required>
-            <small class="text-muted">We will show this word in every email we send you.</small>
+            <small class="text-muted">This word will appear in every official email we send.</small>
         </div>
         <button type="submit" class="btn btn-primary w-100 mt-3">Create Account</button>
     </form>
