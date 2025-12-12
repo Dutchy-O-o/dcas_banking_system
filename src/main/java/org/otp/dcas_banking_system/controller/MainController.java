@@ -1,9 +1,10 @@
 package org.otp.dcas_banking_system.controller;
 
-import org.otp.dcas_banking_system.model.User;
 import org.otp.dcas_banking_system.model.Transaction;
+import org.otp.dcas_banking_system.model.User;
 import org.otp.dcas_banking_system.repository.*;
 import org.otp.dcas_banking_system.service.*;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -19,26 +20,23 @@ public class MainController {
     @Autowired private EncryptionService encryptionService;
     @Autowired private EmailService emailService;
 
-    @GetMapping("/")
-    public String root() { return "redirect:/dashboard"; }
+    @GetMapping("/") public String root() { return "redirect:/dashboard"; }
 
     @GetMapping("/dashboard")
-    public String dashboard(Authentication auth, Model model) {
+    public String dashboard(Authentication auth, HttpSession session, Model model) {
         User user = userRepository.findByUsername(auth.getName()).orElseThrow();
 
-        // Mail Gönder (Simülasyon - Login Alert)
-        String apw = encryptionService.decrypt(user.getApwEncrypted());
-        // Gerçekte her refresh'te değil, session başlangıcında atılmalı.
-        // Demo olduğu için konsolda görmeniz adına buraya koyuyorum.
-       emailService.sendSecurityAlert(user.getEmail(), "New Login Detected", apw,
-              "We detected a new login to your DCAS Bank account. If this wasn't you, please contact support.");
+        if (user.isLoginSecurityEnabled() && session.getAttribute("login_alert_sent") == null) {
+            String apw = encryptionService.decrypt(user.getApwEncrypted());
+            emailService.sendSecurityAlert(user.getEmail(), user.getFullName(), "New Login", apw, "Login detected.");
+            session.setAttribute("login_alert_sent", true);
+        }
 
         List<Transaction> transactions = transactionRepository
-                .findBySenderUsernameOrReceiverUsernameOrderByTimestampDesc(user.getUsername(), user.getUsername());
+                .findBySenderUsernameOrReceiverUsernameOrderByTimestampDesc(user.getFullName(), user.getFullName());
 
         model.addAttribute("user", user);
         model.addAttribute("transactions", transactions);
-
         return "dashboard";
     }
 }

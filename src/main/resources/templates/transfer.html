@@ -17,22 +17,34 @@
 
                     <div class="alert alert-info d-flex align-items-center">
                         <span class="me-2">ℹ️</span>
-                        <div>
-                            Current Balance: <strong>$<span th:text="${balance}"></span></strong>
-                        </div>
+                        <div>Current Balance: <strong>$<span th:text="${balance}"></span></strong></div>
                     </div>
 
                     <form th:action="@{/init-transfer}" method="post">
+
                         <div class="mb-3">
-                            <label class="form-label">Receiver Username</label>
-                            <input type="text" name="receiver" class="form-control" placeholder="Who are you sending to?" required>
+                            <label class="form-label fw-bold">Recipient Account Number (IBAN)</label>
+                            <input type="text" name="receiverAccount" class="form-control font-monospace" placeholder="TR..." required>
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label">Amount ($)</label>
+                            <label class="form-label fw-bold">Recipient Name & Surname</label>
+                            <input type="text" name="receiverName" class="form-control" placeholder="e.g. Jane Smith" required>
+                            <small class="text-muted">Must match exact account holder name.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Amount ($)</label>
                             <input type="number" name="amount" class="form-control" step="0.01" min="1" placeholder="0.00" required>
                         </div>
+
+                        <div class="mb-3">
+                            <label>Description</label>
+                            <input type="text" name="description" class="form-control" placeholder="e.g. Rent payment" required>
+                        </div>
+
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">Continue to Security Check</button>
+                            <button type="submit" class="btn btn-primary btn-lg">Continue</button>
                         </div>
                     </form>
                     <div class="text-center mt-3">
