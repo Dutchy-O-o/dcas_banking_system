@@ -15,15 +15,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // HTTPS zorunluluğu (Prod ortamı için)
-                .requiresChannel(channel -> channel.anyRequest().requiresSecure())
+                .requiresChannel(channel -> channel.anyRequest().requiresSecure()) // HTTPS Zorunlu
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**", "/unlock-account").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin((form) -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/dashboard", true)
+                        .defaultSuccessUrl("/login-check", true) // BURASI ÖNEMLİ
                         .permitAll()
                 )
                 .logout((logout) -> logout.logoutSuccessUrl("/login?logout").permitAll());

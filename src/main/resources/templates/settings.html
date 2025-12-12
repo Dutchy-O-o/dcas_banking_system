@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Settings | DCAS Bank</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container mt-5">
+    <div class="card shadow border-0" style="max-width: 600px; margin: auto;">
+        <div class="card-header bg-white py-3">
+            <h4 class="mb-0 text-primary"><i class="fas fa-cog me-2"></i>Security Preferences</h4>
+        </div>
+        <div class="card-body p-4">
+            <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                <span th:text="${success}"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+
+            <form th:action="@{/settings/update}" method="post">
+
+                <div class="mb-4 p-3 border rounded bg-light">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="loginSwitch" name="loginEnabled" th:checked="${loginEnabled}">
+                        <label class="form-check-label fw-bold" for="loginSwitch">Enable DCAS on Login</label>
+                    </div>
+                    <small class="text-muted d-block mt-1">If enabled, you will be asked for a verification code every time you log in.</small>
+                </div>
+
+                <div class="mb-4 p-3 border rounded bg-light">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="transferSwitch" name="transferEnabled" th:checked="${transferEnabled}">
+                        <label class="form-check-label fw-bold" for="transferSwitch">Enable DCAS for Transfers</label>
+                    </div>
+                    <small class="text-muted d-block mt-1">Require verification code for money transfers.</small>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Verification Threshold Amount ($)</label>
+                    <input type="number" name="limit" class="form-control" th:value="${currentLimit}" step="10" min="0">
+                    <div class="form-text">Transfers below this amount will skip verification (if enabled above).</div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <a href="/dashboard" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
