@@ -17,7 +17,8 @@ public class SecurityConfig {
         http
                 .requiresChannel(channel -> channel.anyRequest().requiresSecure()) // HTTPS Zorunlu
                 .authorizeHttpRequests((requests) -> requests
-                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**", "/unlock-account").permitAll()
+                        // Buraya "/setup-2fa" ekliyoruz:
+                        .requestMatchers("/", "/register", "/login", "/css/**", "/js/**", "/unlock-account", "/setup-2fa").permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin((form) -> form

@@ -10,6 +10,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Controller
@@ -26,9 +28,25 @@ public class MainController {
     public String dashboard(Authentication auth, HttpSession session, Model model) {
         User user = userRepository.findByUsername(auth.getName()).orElseThrow();
 
-        if (user.isLoginSecurityEnabled() && session.getAttribute("login_alert_sent") == null) {
+        if (session.getAttribute("login_alert_sent") == null) {
             String apw = encryptionService.decrypt(user.getApwEncrypted());
-            emailService.sendSecurityAlert(user.getEmail(), user.getFullName(), "New Login", apw, "Login detected.");
+
+            // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
+
+            // Tarihi daha okunaklı bir formata çeviriyoruz
+            // Örnek Çıktı: 14-12-2025 17:46:21
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+            String formattedTime = java.time.LocalDateTime.now().format(formatter);
+
+            emailService.sendLoginNotification(
+                    user.getEmail(),
+                    user.getFullName(),
+                    apw,
+                    formattedTime // Artık düzeltilmiş saati gönderiyoruz
+            );
+
+            // --- DEĞİŞİKLİK BURADA BİTİYOR ---
+
             session.setAttribute("login_alert_sent", true);
         }
 
