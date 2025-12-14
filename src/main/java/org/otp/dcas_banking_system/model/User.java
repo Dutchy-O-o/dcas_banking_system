@@ -45,4 +45,6 @@ public class User {
     private boolean accountLocked = false;
     private LocalDateTime lockTime;
     private String unlockToken;
+    // User.java dosyasının içine, diğer alanların altına ekle:
+    private String recoveryToken;
 }
