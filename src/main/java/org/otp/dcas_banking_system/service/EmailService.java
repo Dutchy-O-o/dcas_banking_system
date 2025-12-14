@@ -99,4 +99,34 @@ public class EmailService {
 
         sendEmail(toEmail, toName, "Welcome - Important Security Information", apw, body);
     }
+
+    // EmailService.java içerisine ekle:
+
+    // 5. QR Kod Kurtarma (Recovery) - İSTEK 1
+    public void sendQrRecoveryEmail(String toEmail, String toName, String apw, String recoveryLink) {
+        String body = """
+                You have requested to view your 2FA QR Code again.
+                
+                To set up your Google Authenticator, please click the secure link below:
+                👉 %s
+                
+                This link allows you to scan the QR code again. If you did not request this, please change your password immediately.
+                """.formatted(recoveryLink);
+
+        sendEmail(toEmail, toName, "Action Required: 2FA Setup Link", apw, body);
+    }
+
+    // 6. Giriş Bildirimi (Login Alert) - İSTEK 2
+    public void sendLoginNotification(String toEmail, String toName, String apw, String time) {
+        String body = """
+                New login detected for your DCAS Bank account.
+                
+                📅 Time: %s
+                
+                If this was you, no action is needed.
+                If you do not recognize this activity, please contact support immediately.
+                """.formatted(time);
+
+        sendEmail(toEmail, toName, "Security Alert: New Login Detected", apw, body);
+    }
 }
