@@ -1,12 +1,14 @@
 package org.otp.dcas_banking_system.service;
 
 import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class EmailService {
 
@@ -70,10 +72,10 @@ public class EmailService {
             helper.setText(fullMessage); // true parametresi eklenirse HTML gönderilebilir
 
             javaMailSender.send(message);
-            System.out.println("✅ Email Sent to: " + toName);
+            log.info("Email sent to: {} <{}>", toName, to);
 
         } catch (Exception e) {
-            System.err.println("❌ Mail Error: " + e.getMessage());
+            log.error("Failed to send email to {} <{}>: {}", toName, to, e.getMessage(), e);
         }
     }
 

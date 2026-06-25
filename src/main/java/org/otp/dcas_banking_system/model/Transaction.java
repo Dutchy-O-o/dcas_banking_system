@@ -2,6 +2,8 @@ package org.otp.dcas_banking_system.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -14,8 +16,24 @@ public class Transaction {
 
     private String senderUsername;
     private String receiverUsername;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User sender;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receiver_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private User receiver;
+
     private BigDecimal amount;
     private LocalDateTime timestamp;
-    private String status; // SUCCESS, FAILED
+
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus status;
+
     private String description;
 }

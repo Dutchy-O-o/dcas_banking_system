@@ -1,66 +1,84 @@
 package org.otp.dcas_banking_system.controller;
 
-import org.otp.dcas_banking_system.model.*;
-import org.otp.dcas_banking_system.repository.*;
-import org.otp.dcas_banking_system.service.*;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.otp.dcas_banking_system.dto.TransferRequest;
+import org.otp.dcas_banking_system.exception.InsufficientBalanceException;
+import org.otp.dcas_banking_system.exception.TransferValidationException;
+import org.otp.dcas_banking_system.model.User;
+import org.otp.dcas_banking_system.service.AuthService;
+import org.otp.dcas_banking_system.service.DcasService;
+import org.otp.dcas_banking_system.service.EmailService;
+import org.otp.dcas_banking_system.service.EncryptionService;
+import org.otp.dcas_banking_system.service.TransferService;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.UUID;
 
+@Slf4j
 @Controller
+@RequiredArgsConstructor
 public class TransferController {
 
-    @Autowired private UserRepository userRepository;
-    @Autowired private TransactionRepository transactionRepository;
-    @Autowired private DcasService dcasService;
-    @Autowired private EmailService emailService;
-    @Autowired private EncryptionService encryptionService;
+    private final TransferService transferService;
+    private final AuthService authService;
+    private final DcasService dcasService;
+    private final EmailService emailService;
+    private final EncryptionService encryptionService;
 
     @GetMapping("/transfer")
     public String transferPage(Authentication auth, Model model) {
-        User user = userRepository.findByUsername(auth.getName()).orElseThrow();
-        if (user.isAccountLocked()) return "locked"; // Basit kontrol
+        User user = transferService.loadSender(auth.getName());
+        if (user.isAccountLocked()) return "locked";
         model.addAttribute("balance", user.getBalance());
         return "transfer";
     }
 
     @PostMapping("/init-transfer")
-    public String initTransfer(@RequestParam String receiverAccount, @RequestParam String receiverName,
-                               @RequestParam BigDecimal amount, @RequestParam String description,
+    public String initTransfer(@Valid @ModelAttribute TransferRequest req,
+                               BindingResult bindingResult,
                                Authentication auth, HttpSession session, Model model) {
-        User sender = userRepository.findByUsername(auth.getName()).orElseThrow();
-        User receiver = userRepository.findByAccountNumber(receiverAccount).orElse(null);
+        User sender = transferService.loadSender(auth.getName());
 
-        if (receiver == null || !receiver.getFullName().equalsIgnoreCase(receiverName)) {
-            model.addAttribute("error", "Account/Name mismatch or not found.");
-            model.addAttribute("balance", sender.getBalance());
-            return "transfer";
-        }
-        if (sender.getBalance().compareTo(amount) < 0) {
-            model.addAttribute("error", "Insufficient balance.");
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("error", bindingResult.getAllErrors().get(0).getDefaultMessage());
             model.addAttribute("balance", sender.getBalance());
             return "transfer";
         }
 
-        // Limit ve Ayar Kontrolü
-        if (!sender.isTransferSecurityEnabled() || amount.compareTo(sender.getDcasTransactionLimit()) < 0) {
-            return performTransfer(sender, receiverAccount, amount, description);
+        try {
+            transferService.validateReceiver(req.receiverAccount(), req.receiverName());
+            transferService.checkBalance(sender, req.amount());
+        } catch (TransferValidationException | InsufficientBalanceException ex) {
+            log.warn("Transfer pre-check failed for {}: {}", auth.getName(), ex.getMessage());
+            model.addAttribute("error", ex.getMessage());
+            model.addAttribute("balance", sender.getBalance());
+            return "transfer";
         }
 
-        // DCAS Başlat
+        if (!transferService.requiresChallenge(sender, req.amount())) {
+            transferService.executeTransfer(auth.getName(), req.receiverAccount(),
+                    req.amount(), req.description());
+            return "redirect:/success";
+        }
+
         DcasService.ChallengeRule rule = dcasService.generateChallengeRule(sender);
         session.setAttribute("transfer_rule", rule);
         session.setAttribute("challenge_start_time", LocalDateTime.now());
-        session.setAttribute("tx_receiver_account", receiverAccount);
-        session.setAttribute("tx_amount", amount);
-        session.setAttribute("tx_description", description);
+        session.setAttribute("tx_receiver_account", req.receiverAccount());
+        session.setAttribute("tx_amount", req.amount());
+        session.setAttribute("tx_description", req.description());
 
         String apw = encryptionService.decrypt(sender.getApwEncrypted());
         emailService.sendDcasChallenge(sender.getEmail(), sender.getFullName(), apw, rule.instruction);
@@ -70,8 +88,9 @@ public class TransferController {
     }
 
     @PostMapping("/verify-transfer")
-    public String verifyTransfer(@RequestParam String userResponse, Authentication auth, HttpSession session, Model model) {
-        User sender = userRepository.findByUsername(auth.getName()).orElseThrow();
+    public String verifyTransfer(@RequestParam String userResponse,
+                                 Authentication auth, HttpSession session, Model model) {
+        User sender = transferService.loadSender(auth.getName());
 
         LocalDateTime startTime = (LocalDateTime) session.getAttribute("challenge_start_time");
         if (startTime == null || ChronoUnit.MINUTES.between(startTime, LocalDateTime.now()) > 3) {
@@ -89,42 +108,22 @@ public class TransferController {
             String desc = (String) session.getAttribute("tx_description");
             session.removeAttribute("transfer_rule");
             session.removeAttribute("tx_description");
-            return performTransfer(sender, acc, amt, desc);
-        } else {
-            // BAŞARISIZ - RETRY MANTIĞI
-            int attempts = sender.getFailedAttempts() + 1;
-            sender.setFailedAttempts(attempts);
-
-            if (attempts >= 3) {
-                // KİLİTLEME İŞLEMİ
-                sender.setAccountLocked(true);
-                sender.setLockTime(LocalDateTime.now());
-
-                // Unlock Token Üret
-                String token = UUID.randomUUID().toString();
-                sender.setUnlockToken(token);
-                userRepository.save(sender);
-
-                // Kilit Maili Gönder (Link ile)
-                String apw = encryptionService.decrypt(sender.getApwEncrypted());
-                String unlockLink = "https://localhost:8443/unlock-account?token=" + token;
-                emailService.sendLockNotification(sender.getEmail(), sender.getFullName(), apw, unlockLink);
-
-                return "locked";
-            }
-
-            userRepository.save(sender);
-
-            // KULLANICI AYNI SAYFADA KALSIN (RETRY)
-            model.addAttribute("error", "Incorrect code! You have " + (3 - attempts) + " attempts left.");
-            model.addAttribute("info", "Please check your email again for the instruction.");
-            return "verify"; // verify.html'e geri dön, yeni challenge üretme
+            transferService.executeTransfer(auth.getName(), acc, amt, desc);
+            return "redirect:/success";
         }
+
+        boolean locked = authService.registerFailedAttempt(sender);
+        if (locked) return "locked";
+
+        model.addAttribute("error",
+                "Incorrect code! You have " + (3 - sender.getFailedAttempts()) + " attempts left.");
+        model.addAttribute("info", "Please check your email again for the instruction.");
+        return "verify";
     }
 
     @PostMapping("/resend-transfer-code")
     public String resendTransferCode(Authentication auth, HttpSession session) {
-        User sender = userRepository.findByUsername(auth.getName()).orElseThrow();
+        User sender = transferService.loadSender(auth.getName());
         DcasService.ChallengeRule rule = dcasService.generateChallengeRule(sender);
         session.setAttribute("transfer_rule", rule);
         session.setAttribute("challenge_start_time", LocalDateTime.now());
@@ -134,34 +133,14 @@ public class TransferController {
         return "redirect:/verify-page-redirect";
     }
 
-    // verify.html sayfasına GET ile dönmek için yardımcı bir endpoint
     @GetMapping("/verify-page-redirect")
     public String verifyPageRedirect(Model model) {
         model.addAttribute("info", "New code sent to EMAIL.");
         return "verify";
     }
 
-    private String performTransfer(User sender, String receiverAccount, BigDecimal amount, String description) {
-        User receiver = userRepository.findByAccountNumber(receiverAccount).orElseThrow();
-        sender.setBalance(sender.getBalance().subtract(amount));
-        receiver.setBalance(receiver.getBalance().add(amount));
-        sender.setFailedAttempts(0);
-        userRepository.save(sender);
-        userRepository.save(receiver);
-
-        Transaction tx = new Transaction();
-        tx.setSenderUsername(sender.getFullName());
-        tx.setReceiverUsername(receiver.getFullName());
-        tx.setAmount(amount);
-        tx.setTimestamp(LocalDateTime.now());
-        tx.setStatus("SUCCESS");
-        tx.setDescription(description);
-        transactionRepository.save(tx);
-
-        String apw = encryptionService.decrypt(sender.getApwEncrypted());
-        emailService.sendSecurityAlert(sender.getEmail(), sender.getFullName(), "Transfer Success", apw, "Sent $" + amount + " to " + receiver.getFullName());
-        return "redirect:/success";
+    @GetMapping("/success")
+    public String success() {
+        return "success";
     }
-
-    @GetMapping("/success") public String success() { return "success"; }
 }
