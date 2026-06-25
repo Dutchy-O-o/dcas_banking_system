@@ -1,78 +1,74 @@
 package org.otp.dcas_banking_system.controller;
 
-import org.otp.dcas_banking_system.model.User;
-import org.otp.dcas_banking_system.repository.UserRepository;
-import org.otp.dcas_banking_system.service.*;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.otp.dcas_banking_system.dto.RegisterRequest;
+import org.otp.dcas_banking_system.model.User;
+import org.otp.dcas_banking_system.service.AuthService;
+import org.otp.dcas_banking_system.service.DcasService;
+import org.otp.dcas_banking_system.service.EmailService;
+import org.otp.dcas_banking_system.service.EncryptionService;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Random;
-import java.util.UUID;
 
+@Slf4j
 @Controller
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired private UserRepository userRepository;
-    @Autowired private EncryptionService encryptionService;
-    @Autowired private DcasService dcasService;
-    @Autowired private PasswordEncoder passwordEncoder;
-    @Autowired private EmailService emailService;
+    private final AuthService authService;
+    private final DcasService dcasService;
+    private final EmailService emailService;
+    private final EncryptionService encryptionService;
 
     @GetMapping("/login")
-    public String showLogin() { return "login"; }
+    public String showLogin() {
+        return "login";
+    }
+
     @GetMapping("/register")
-    public String showRegister() { return "register"; }
+    public String showRegister() {
+        return "register";
+    }
 
     @PostMapping("/register")
-    public String registerUser(@RequestParam String fullName, @RequestParam String email,
-                               @RequestParam String password, @RequestParam String tsw,
-                               @RequestParam String apw, Model model) {
-        if (userRepository.existsByUsername(email)) {
+    public String registerUser(@Valid @ModelAttribute RegisterRequest req,
+                               BindingResult bindingResult, Model model) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("error", bindingResult.getAllErrors().get(0).getDefaultMessage());
+            return "register";
+        }
+
+        if (authService.isEmailRegistered(req.email())) {
             model.addAttribute("error", "Email already registered.");
             return "register";
         }
 
-        User user = new User();
-        user.setFullName(fullName);
-        user.setUsername(email);
-        user.setEmail(email);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setAccountNumber("TR" + (new Random().nextLong(899999999999999999L) + 100000000000000000L));
-        user.setTswEncrypted(encryptionService.encrypt(tsw));
-        user.setApwEncrypted(encryptionService.encrypt(apw));
+        AuthService.RegisterResult result = authService.register(
+                req.fullName(), req.email(), req.password(), req.tsw(), req.apw());
 
-        String secret = dcasService.generateSecretKey();
-        user.setTotpSecretEncrypted(encryptionService.encrypt(secret));
-
-        userRepository.save(user);
-
-        emailService.sendWelcomeEmail(email, fullName, apw);
-
-        String otpAuthUrl = String.format("otpauth://totp/DCAS_Bank:%s?secret=%s&issuer=DCAS_Bank",email, secret);
-        model.addAttribute("otpAuthUrl", otpAuthUrl);
-        model.addAttribute("secret", secret);
-
+        model.addAttribute("otpAuthUrl", result.otpAuthUrl());
+        model.addAttribute("secret", result.secret());
         return "register_success";
     }
 
     @GetMapping("/login-check")
     public String loginCheck(Authentication auth, HttpSession session) {
-        User user = userRepository.findByUsername(auth.getName()).orElseThrow();
+        User user = authService.loadUser(auth.getName());
 
-        if (user.isAccountLocked()) {
-            if (user.getLockTime() != null && ChronoUnit.MINUTES.between(user.getLockTime(), LocalDateTime.now()) >= 5) {
-                user.setAccountLocked(false);
-                user.setFailedAttempts(0);
-                userRepository.save(user);
-            } else {
-                return "redirect:/locked-page";
-            }
+        if (user.isAccountLocked() && !authService.unlockIfExpired(user)) {
+            return "redirect:/locked-page";
         }
 
         if (user.isLoginSecurityEnabled()) {
@@ -87,11 +83,15 @@ public class AuthController {
         return "redirect:/dashboard";
     }
 
-    @GetMapping("/verify-login") public String showVerifyLogin() { return "verify_login"; }
+    @GetMapping("/verify-login")
+    public String showVerifyLogin() {
+        return "verify_login";
+    }
 
     @PostMapping("/verify-login-process")
-    public String verifyLoginProcess(@RequestParam String userResponse, Authentication auth, HttpSession session, Model model) {
-        User user = userRepository.findByUsername(auth.getName()).orElseThrow();
+    public String verifyLoginProcess(@RequestParam String userResponse,
+                                     Authentication auth, HttpSession session, Model model) {
+        User user = authService.loadUser(auth.getName());
 
         LocalDateTime startTime = (LocalDateTime) session.getAttribute("challenge_start_time");
         if (startTime != null && ChronoUnit.MINUTES.between(startTime, LocalDateTime.now()) > 3) {
@@ -103,48 +103,35 @@ public class AuthController {
         DcasService.ChallengeRule rule = (DcasService.ChallengeRule) session.getAttribute("login_rule");
         if (dcasService.verifyChallenge(user, rule, userResponse)) {
             session.removeAttribute("login_rule");
-            user.setFailedAttempts(0);
-            userRepository.save(user);
+            authService.resetFailedAttempts(user);
             return "redirect:/dashboard";
-        } else {
-            handleFailure(user);
-            if (user.isAccountLocked()) return "redirect:/locked-page";
-            model.addAttribute("error", "Incorrect code! Attempts left: " + (3 - user.getFailedAttempts()));
-            return "verify_login";
         }
+
+        boolean locked = authService.registerFailedAttempt(user);
+        if (locked) return "redirect:/locked-page";
+
+        model.addAttribute("error",
+                "Incorrect code! Attempts left: " + (3 - user.getFailedAttempts()));
+        return "verify_login";
     }
 
     @PostMapping("/resend-login-code")
-    public String resendLoginCode() { return "redirect:/login-check"; }
+    public String resendLoginCode() {
+        return "redirect:/login-check";
+    }
 
     @GetMapping("/unlock-account")
     public String unlockAccount(@RequestParam String token, Model model) {
-        User user = userRepository.findAll().stream().filter(u -> token.equals(u.getUnlockToken())).findFirst().orElse(null);
-        if (user != null) {
-            user.setAccountLocked(false);
-            user.setFailedAttempts(0);
-            user.setUnlockToken(null);
-            userRepository.save(user);
+        if (authService.unlockByToken(token)) {
             model.addAttribute("success", "Account UNLOCKED.");
-            return "login";
+        } else {
+            model.addAttribute("error", "Invalid link.");
         }
-        model.addAttribute("error", "Invalid link.");
         return "login";
     }
 
-    @GetMapping("/locked-page") public String lockedPage() { return "locked"; }
-
-    private void handleFailure(User user) {
-        int attempts = user.getFailedAttempts() + 1;
-        user.setFailedAttempts(attempts);
-        if (attempts >= 3) {
-            user.setAccountLocked(true);
-            user.setLockTime(LocalDateTime.now());
-            String token = UUID.randomUUID().toString();
-            user.setUnlockToken(token);
-            String apw = encryptionService.decrypt(user.getApwEncrypted());
-            emailService.sendLockNotification(user.getEmail(), user.getFullName(), apw, "https://localhost:8443/unlock-account?token="+token);
-        }
-        userRepository.save(user);
+    @GetMapping("/locked-page")
+    public String lockedPage() {
+        return "locked";
     }
 }

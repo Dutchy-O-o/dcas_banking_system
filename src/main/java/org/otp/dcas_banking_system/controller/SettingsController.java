@@ -1,10 +1,11 @@
 package org.otp.dcas_banking_system.controller;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.otp.dcas_banking_system.model.User;
 import org.otp.dcas_banking_system.repository.UserRepository;
 import org.otp.dcas_banking_system.service.EmailService;
 import org.otp.dcas_banking_system.service.EncryptionService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,12 +15,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@Slf4j
 @Controller
+@RequiredArgsConstructor
 public class SettingsController {
 
-    @Autowired private UserRepository userRepository;
-    @Autowired private EmailService emailService;
-    @Autowired private EncryptionService encryptionService;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final EncryptionService encryptionService;
 
     @GetMapping("/settings")
     public String showSettings(Authentication auth, Model model) {
@@ -51,6 +54,8 @@ public class SettingsController {
         user.setTransferSecurityEnabled(transferEnabled);
 
         userRepository.save(user);
+        log.info("Settings updated for {}: limit={}, loginOtp={}, transferOtp={}",
+                user.getUsername(), limit, loginEnabled, transferEnabled);
 
         model.addAttribute("success", "Security preferences updated successfully!");
 

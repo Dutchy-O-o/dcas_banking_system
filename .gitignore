@@ -32,3 +32,22 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets — NEVER commit real credentials ###
+application.properties
+application-local.properties
+application-secret.properties
+*.p12
+*.jks
+keystore*
+*.env
+.env
+
+### Non-project clutter (interview prep, doc generators, exports) ###
+*.docx
+~$*
+build_*.py
+repomix-output.xml
+untitled/
+A4/
+Mainframe_Podcast_Kaynagi.md
