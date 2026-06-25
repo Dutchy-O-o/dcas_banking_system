@@ -2,7 +2,16 @@
 
 A Spring Boot banking backend built around a custom **Dynamic Challenge Authentication System (DCAS)**: high‑value money transfers are authorized with a layered challenge that combines **TOTP** (time‑based one‑time passwords) and a **secret‑word** check, on top of standard JWT authentication. The system uses an **event‑driven, Transactional‑Outbox** pipeline over Apache Kafka for reliable, at‑least‑once transfer notifications.
 
-> Java 21 · Spring Boot 3 · Spring Security · PostgreSQL · Apache Kafka · Docker
+<p>
+  <img src="https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21" />
+  <img src="https://img.shields.io/badge/Spring_Boot-3-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3" />
+  <img src="https://img.shields.io/badge/Spring_Security-6DB33F?style=for-the-badge&logo=springsecurity&logoColor=white" alt="Spring Security" />
+  <img src="https://img.shields.io/badge/Apache_Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white" alt="Apache Kafka" />
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/JWT-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Maven-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white" alt="Maven" />
+</p>
 
 ---
 
@@ -30,30 +39,29 @@ Most demo banking apps stop at "login + transfer". DCAS focuses on the two parts
 
 ## Architecture
 
-```
-                ┌─────────────────────────────────────────────┐
-   HTTP / JWT   │  Controllers                                │
-  ───────────►  │   REST: Auth · Account · Transfer           │
-                │   MVC : Auth · Main · Settings · Transfer   │
-                └───────────────┬─────────────────────────────┘
-                                │
-                ┌───────────────▼─────────────────────────────┐
-                │  Services                                    │
-                │   AuthService · TransferService · DcasService│
-                │   EncryptionService · EmailService           │
-                └───────────────┬─────────────────────────────┘
-                                │
-          ┌─────────────────────┼───────────────────────────────┐
-          │                     │                               │
-  ┌───────▼────────┐   ┌────────▼─────────┐            ┌────────▼─────────┐
-  │  JPA / Postgres │   │  Outbox table     │  poll →   │ OutboxPublisher  │
-  │  User · Txn     │   │  (same txn as     │ ────────► │   → Kafka topic  │
-  │  OutboxEvent    │   │   the transfer)   │            └────────┬─────────┘
-  └─────────────────┘   └───────────────────┘                     │
-                                                          ┌───────▼────────────────┐
-                                                          │ TransferNotification    │
-                                                          │ Listener → EmailService │
-                                                          └─────────────────────────┘
+```mermaid
+flowchart TD
+    Client["HTTP request + JWT"] --> Controllers
+
+    subgraph Controllers["Controllers"]
+        direction LTR
+        REST["REST API<br/>Auth · Account · Transfer"]
+        MVC["MVC / Thymeleaf<br/>Auth · Main · Settings · Transfer"]
+    end
+
+    Controllers --> Services
+
+    subgraph Services["Services"]
+        direction LTR
+        S1["AuthService · TransferService · DcasService"]
+        S2["EncryptionService · EmailService"]
+    end
+
+    Services -->|"transfer + outbox row<br/>written in ONE transaction"| DB[("JPA / PostgreSQL<br/>User · Transaction · OutboxEvent")]
+
+    DB -->|"OutboxPublisher polls unsent rows"| Kafka[["Apache Kafka topic"]]
+    Kafka --> Listener["TransferNotificationListener"]
+    Listener --> Email["EmailService → notify user"]
 ```
 
 **Transactional Outbox in short:** the transfer and its `OutboxEvent` are written in one DB transaction. A separate publisher reads unsent outbox rows and pushes them to Kafka, so the notification can never be lost even if the broker is momentarily down.
