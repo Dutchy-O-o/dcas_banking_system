@@ -41,27 +41,20 @@ Most demo banking apps stop at "login + transfer". DCAS focuses on the two parts
 
 ```mermaid
 flowchart TD
-    Client["HTTP request + JWT"] --> Controllers
+    Client["HTTP request + JWT"]
+    Controllers["Controllers<br/>REST: Auth, Account, Transfer<br/>MVC: Auth, Main, Settings, Transfer"]
+    Services["Services<br/>AuthService, TransferService, DcasService<br/>EncryptionService, EmailService"]
+    DB[("JPA / PostgreSQL<br/>User, Transaction, OutboxEvent")]
+    Kafka[["Apache Kafka topic"]]
+    Listener["TransferNotificationListener"]
+    Email["EmailService - notify user"]
 
-    subgraph Controllers["Controllers"]
-        direction LTR
-        REST["REST API<br/>Auth · Account · Transfer"]
-        MVC["MVC / Thymeleaf<br/>Auth · Main · Settings · Transfer"]
-    end
-
+    Client --> Controllers
     Controllers --> Services
-
-    subgraph Services["Services"]
-        direction LTR
-        S1["AuthService · TransferService · DcasService"]
-        S2["EncryptionService · EmailService"]
-    end
-
-    Services -->|"transfer + outbox row<br/>written in ONE transaction"| DB[("JPA / PostgreSQL<br/>User · Transaction · OutboxEvent")]
-
-    DB -->|"OutboxPublisher polls unsent rows"| Kafka[["Apache Kafka topic"]]
-    Kafka --> Listener["TransferNotificationListener"]
-    Listener --> Email["EmailService → notify user"]
+    Services -->|"transfer + outbox row in ONE transaction"| DB
+    DB -->|"OutboxPublisher polls unsent rows"| Kafka
+    Kafka --> Listener
+    Listener --> Email
 ```
 
 **Transactional Outbox in short:** the transfer and its `OutboxEvent` are written in one DB transaction. A separate publisher reads unsent outbox rows and pushes them to Kafka, so the notification can never be lost even if the broker is momentarily down.
